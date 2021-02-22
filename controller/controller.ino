@@ -76,10 +76,6 @@ void keypadEvent(KeypadEvent key) {
         }
       }
 
-      Serial.print("prev_key:");
-      Serial.println(prev_key);
-      Serial.print("new_key:");
-      Serial.println(new_key);
       prev_key = key;
 
       Keyboard.write(new_key);
