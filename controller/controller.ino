@@ -14,6 +14,11 @@ char keys[ROWS][COLS] = {
   {'`','~','-'}
 };
 
+char keys_a[2] = { 'a', 'A' };
+char keys_s[2] = { 's', 'S' };
+char keys_c[2] = { 'c', 'C' };
+char keys_n[4] = { 'n', 'w', 'W', 'o' };
+
 // Connect keypad ROW0, ROW1, ROW2 and ROW3 to these Arduino pins.
 byte rowPins[ROWS] = { 3, 8, 7, 5 };
 
@@ -53,42 +58,31 @@ void setup() {
 void keypadEvent(KeypadEvent key) {
   static KeypadEvent prev_key = 0;
   static KeyState prev_state = IDLE;
+  static uint8_t index = 0;
+  KeypadEvent new_key = key;
   KeyState new_state = keypad.getState();
 
   if (new_state == RELEASED) {
     if (prev_state == PRESSED) {
-      // AM / AM_SYNC
-      if ((prev_key == 'a') || (prev_key == 'A')) {
-        if (prev_key == 'a') {
-            key -= 0x20;
-        }  
-      }
-
-      // LSB / USB
-      if ((prev_key == 's') || (prev_key == 'S')) {
-        if (prev_key == 's') {
-            key -= 0x20;
+      if (prev_key != key) {
+        index = 1;
+      } else {
+        switch (key) {
+          case 'a': new_key = keys_a[index]; index++; if (index >= sizeof(keys_a)) index = 0; break;
+          case 's': new_key = keys_s[index]; index++; if (index >= sizeof(keys_s)) index = 0; break;
+          case 'c': new_key = keys_c[index]; index++; if (index >= sizeof(keys_c)) index = 0; break;
+          case 'n': new_key = keys_n[index]; index++; if (index >= sizeof(keys_n)) index = 0; break;
+          default:  break;
         }
       }
 
-      // CW LSB / CW USB
-      if ((prev_key == 'c') || (prev_key == 'C')) {
-        if (prev_key == 'c') {
-            key -= 0x20;
-        }
-      }
-
-      // NFM / WFM (mono) / WFM (stereo)
-      if ((prev_key == 'n') || (prev_key == 'w') || (prev_key == 'W')) {
-        if (prev_key == 'n') {
-            key = 'w';
-        } else if (prev_key == 'w') {
-            key = prev_key - 0x20;
-        }
-      }
+      Serial.print("prev_key:");
+      Serial.println(prev_key);
+      Serial.print("new_key:");
+      Serial.println(new_key);
       prev_key = key;
 
-      Keyboard.write(key);
+      Keyboard.write(new_key);
     } else if (prev_state == HOLD) {
       if (key == '`') {
         Keyboard.release(KEY_LEFT_ALT);
