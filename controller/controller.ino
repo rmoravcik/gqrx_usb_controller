@@ -1,4 +1,5 @@
 #include <Keyboard.h>
+#include <Mouse.h>
 #include <Keypad.h>
 #include <ClickEncoder.h>
 #include <TimerOne.h>
@@ -10,7 +11,7 @@ const byte COLS = 3; // Three columns
 char keys[ROWS][COLS] = {
   {'<','.','>'},
   {'a','s','c'},
-  {'n','w','+'},
+  {'n','d','+'},
   {'`','~','-'}
 };
 
@@ -35,6 +36,8 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 ClickEncoder *encoder;
 int16_t last, value; // variables for current and last rotation value
 
+bool tunning_mode = true;
+
 void timerIsr() {
   encoder->service();
 }
@@ -45,8 +48,9 @@ void setup() {
 
   keypad.addEventListener(keypadEvent);
 
-  // initialize control over the keyboard:
+  // initialize control over the keyboard and mouse
   Keyboard.begin();
+  Mouse.begin();
 
   encoder = new ClickEncoder(ENC_A, ENC_B, ENC_BUTTON, 4);
 
@@ -72,6 +76,7 @@ void keypadEvent(KeypadEvent key) {
           case 's': new_key = keys_s[index]; index++; if (index >= sizeof(keys_s)) index = 0; break;
           case 'c': new_key = keys_c[index]; index++; if (index >= sizeof(keys_c)) index = 0; break;
           case 'n': new_key = keys_n[index]; index++; if (index >= sizeof(keys_n)) index = 0; break;
+          case 'd': Keyboard.press(KEY_LEFT_CTRL); Keyboard.write('d'); Keyboard.release(KEY_LEFT_CTRL); return;
           default:  break;
         }
       }
@@ -98,27 +103,56 @@ void loop() {
   ClickEncoder::Button b = encoder->getButton();
 
   if (b == ClickEncoder::DoubleClicked) {
-    Keyboard.write('f');
+    if (tunning_mode) {
+      tunning_mode = false;
+      Keyboard.write('f');      
+    } else {
+      tunning_mode = true;
+      Keyboard.write('f');
+      // move mouse cursor over waterfall
+      Mouse.move(0, 127);
+      Mouse.move(0, 127);
+    }
   } else {
     value += encoder->getValue();
     if (value != last) {
       if (last < value) {
         if (keypad.getState() == HOLD) {
           Keyboard.write(KEY_TAB);
-        } else if (digitalRead(ENC_BUTTON) == LOW) {
-          Keyboard.write(KEY_RIGHT_ARROW);
         } else {
-          Keyboard.write(KEY_UP_ARROW);
+          if (tunning_mode) {
+            if (digitalRead(ENC_BUTTON) == LOW) {
+              Mouse.move(0, 0, 10);
+            } else {
+              Mouse.move(0, 0, 1);
+            }
+          } else {
+            if (digitalRead(ENC_BUTTON) == LOW) {
+              Keyboard.write(KEY_RIGHT_ARROW);
+            } else {
+              Keyboard.write(KEY_UP_ARROW);
+            }
+          }
         }
       } else {
         if (keypad.getState() == HOLD) {
           Keyboard.press(KEY_LEFT_SHIFT);
           Keyboard.write(KEY_TAB);
           Keyboard.release(KEY_LEFT_SHIFT);
-        } else if (digitalRead(ENC_BUTTON) == LOW) {
-          Keyboard.write(KEY_LEFT_ARROW);
         } else {
-          Keyboard.write(KEY_DOWN_ARROW);
+          if (tunning_mode) {
+            if (digitalRead(ENC_BUTTON) == LOW) {
+              Mouse.move(0, 0, -10);
+            } else {
+              Mouse.move(0, 0, -1);
+            }
+          } else {
+            if (digitalRead(ENC_BUTTON) == LOW) {
+              Keyboard.write(KEY_LEFT_ARROW);
+            } else {
+              Keyboard.write(KEY_DOWN_ARROW);
+            }
+          }
         }
       }
       last = value;
