@@ -37,6 +37,7 @@ ClickEncoder *encoder;
 int16_t last, value; // variables for current and last rotation value
 
 bool tunning_mode = true;
+KeypadEvent prev_key = 0;
 
 void timerIsr() {
   encoder->service();
@@ -60,7 +61,6 @@ void setup() {
 }
 
 void keypadEvent(KeypadEvent key) {
-  static KeypadEvent prev_key = 0;
   static KeyState prev_state = IDLE;
   static uint8_t index = 0;
   KeypadEvent new_key = key;
@@ -81,9 +81,14 @@ void keypadEvent(KeypadEvent key) {
         }
       }
 
-      prev_key = key;
+      if (new_key == '+') {
+        new_key = KEY_VOLUME_UP;
+      } else if (new_key == '-') {
+        new_key = KEY_VOLUME_DOWN;
+      }
 
       Keyboard.write(new_key);
+      prev_key = key;
     } else if (prev_state == HOLD) {
       if (key == '`') {
         Keyboard.release(KEY_LEFT_ALT);
@@ -101,6 +106,24 @@ void keypadEvent(KeypadEvent key) {
 void loop() {
   char key = keypad.getKey();
   ClickEncoder::Button b = encoder->getButton();
+
+  if ((prev_key == '+') || (prev_key == '-') || (key == '+') || (key == '-')) {
+    if (key) {
+        prev_key = key;
+    }
+
+    if (keypad.getState() == HOLD) {
+      uint8_t key_to_send;
+      if (prev_key == '+') {
+        key_to_send = KEY_VOLUME_UP;
+      } else if (prev_key == '-') {
+        key_to_send = KEY_VOLUME_DOWN;
+      }
+      Keyboard.write(key_to_send);
+      delay(50);
+      return;
+    }
+  }
 
   if (b == ClickEncoder::DoubleClicked) {
     if (tunning_mode) {
